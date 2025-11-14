@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSV Upload</title>
+</head>
+<body>
+    <h1>Upload CSV</h1>
+    <form id="uploadForm" method="post" enctype="multipart/form-data" action="{% url 'upload_csv' %}">
+        {% csrf_token %}
+        <input type="file" name="file" required>
+        <button type="submit">Upload</button>
+    </form>
+
+    <div id="progress" style="display:none;">
+        <p>Progress: <span id="percent">0%</span></p>
+        <progress id="progressBar" value="0" max="100"></progress>
+    </div>
+
+    <script>
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    const form = document.getElementById('uploadForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // prevent page reload
+
+        const fileInput = document.querySelector('input[name="file"]');
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            const taskId = data.task_id;
+            document.getElementById('progress').style.display = 'block';
+
+            // Polling task progress every second
+            const interval = setInterval(() => {
+                fetch(`/task-status/${taskId}/`)
+                    .then(res => res.json())
+                    .then(status => {
+                        document.getElementById('percent').textContent = status.percent + '%';
+                        document.getElementById('progressBar').value = status.percent;
+                        if (status.percent >= 100) clearInterval(interval);
+                    });
+            }, 1000);
+        });
+    });
+    </script>
+</body>
+</html>
