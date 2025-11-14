@@ -127,3 +127,6 @@ def bulk_delete_products(request):
         Product.objects.all().delete()
         messages.success(request, "All products deleted successfully!")
     return redirect('product_list')
+
+def home(request):
+    return render(request, 'shop/home.html')
